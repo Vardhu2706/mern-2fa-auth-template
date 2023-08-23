@@ -2,6 +2,8 @@
 import asyncHandler from "express-async-handler";
 import User from "../models/userModel.js";
 import generateToken from "../utils/generateToken.js";
+import { v4 as uuidv4 } from "uuid";
+import speakeasy from "speakeasy";
 
 //  @desc   Auth user/set token
 //  @route  POST /api/users/auth
@@ -10,18 +12,48 @@ const authUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email });
 
-  if (user && (await user.matchPassword(password))) {
-    generateToken(res, user._id);
-    res.status(201).json({ _id: user._id, name: user.name, email: user.email });
-  } else {
+  if (user) {
+    if (await user.matchPassword(password)) {
+      generateToken(res, user._id);
+      res
+        .status(201)
+        .json({ _id: user._id, name: user.name, email: user.email });
+    }
     res.status(400);
     throw new Error("Invalid Email or Password!");
+  } else {
+    res.status(400);
+    throw new Error("User not found!");
+  }
+});
+
+// @desc Create Secret key
+// @route POST /api/users/auth
+// @access Public
+const getQRCode = asyncHandler(async (req, res) => {
+  const id = uuidv4();
+  try {
+    const temp_secret = await speakeasy.generateSecret({
+      name: "MERN 2FA Template",
+    });
+    res.json({
+      id,
+      secret: temp_secret.base32,
+      otpAuthURL: temp_secret.otpauth_url,
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Error generating secret key" });
   }
 });
 
 //  @desc   Register new user
 //  @route  POST /api/users
 //  @access Public
+
+/*
+  - Store ID, secret, name, password, email in localstorage
+  - 
+*/
 const registerUser = asyncHandler(async (req, res) => {
   // Fetching Form Data
   const { name, email, password } = req.body;
@@ -105,4 +137,5 @@ export {
   logoutUser,
   getUserProfile,
   updateUserProfile,
+  getQRCode,
 };

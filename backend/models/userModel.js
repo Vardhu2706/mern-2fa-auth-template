@@ -16,6 +16,14 @@ const userSchema = mongoose.Schema(
       type: String,
       required: true,
     },
+    secret: {
+      type: String,
+      required: true,
+    },
+    otpAuthURL: {
+      type: String,
+      required: true,
+    },
   },
   {
     timestamps: true,
