@@ -12,7 +12,7 @@ const LoginScreen = () => {
   // State Variables
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [otp, setOtp] = useState("");
+  const [token, setToken] = useState("");
 
   const dispatch = useDispatch();
   const navigate = useNavigate();
@@ -33,7 +33,7 @@ const LoginScreen = () => {
     e.preventDefault();
 
     try {
-      const res = await login({ email, password }).unwrap();
+      const res = await login({ email, password, token }).unwrap();
       dispatch(setCredentials({ ...res }));
       navigate("/");
       toast.success("Logged In");
@@ -70,13 +70,13 @@ const LoginScreen = () => {
           </Form.Group>
 
           {/* OTP */}
-          <Form.Group className="my-2" controlId="otp">
-            <Form.Label>OTP</Form.Label>
+          <Form.Group className="my-2" controlId="token">
+            <Form.Label>Token</Form.Label>
             <Form.Control
               type="number"
-              placeholder="Enter OTP"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value)}
+              placeholder="Enter Token"
+              value={token}
+              onChange={(e) => setToken(e.target.value)}
             ></Form.Control>
           </Form.Group>
 

@@ -9,18 +9,36 @@ import speakeasy from "speakeasy";
 //  @route  POST /api/users/auth
 //  @access Public
 const authUser = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password, token } = req.body;
   const user = await User.findOne({ email });
 
+  // Check User
   if (user) {
+    // Check Passowrds
     if (await user.matchPassword(password)) {
-      generateToken(res, user._id);
-      res
-        .status(201)
-        .json({ _id: user._id, name: user.name, email: user.email });
+      const secret = user.secret;
+
+      // Check Token
+      const tokenValidates = speakeasy.totp.verify({
+        secret,
+        encoding: "base32",
+        token,
+        window: 1,
+      });
+
+      if (tokenValidates) {
+        generateToken(res, user._id);
+        res
+          .status(201)
+          .json({ _id: user._id, name: user.name, email: user.email });
+      } else {
+        res.status(400);
+        throw new Error("Invalid Token!");
+      }
+    } else {
+      res.status(400);
+      throw new Error("Invalid Email or Password!");
     }
-    res.status(400);
-    throw new Error("Invalid Email or Password!");
   } else {
     res.status(400);
     throw new Error("User not found!");
@@ -56,29 +74,61 @@ const getQRCode = asyncHandler(async (req, res) => {
 */
 const registerUser = asyncHandler(async (req, res) => {
   // Fetching Form Data
-  const { name, email, password } = req.body;
+  const { name, email, password, secret, token, otpAuthURL } = req.body;
 
-  // Check if user exists
-  const userExists = await User.findOne({ email });
+  console.log({ name, email, password, secret, token, otpAuthURL });
 
-  if (userExists) {
-    res.status(400);
-    throw new Error("User already exists!");
-  }
+  // Verify Token
+  try {
+    const verified = speakeasy.totp.verify({
+      secret,
+      encoding: "base32",
+      token,
+    });
+    console.log(verified);
 
-  //   Creating a new user if it doesn't exist
-  const user = await User.create({
-    name,
-    email,
-    password,
-  });
+    if (verified) {
+      console.log("OTP Veified");
+      // Check if user exists
+      const userExists = await User.findOne({ email });
+      console.log(userExists);
 
-  if (user) {
-    generateToken(res, user._id);
-    res.status(201).json({ _id: user._id, name: user.name, email: user.email });
-  } else {
+      // Throw error if already exists
+      if (userExists) {
+        res.status(400);
+        throw new Error("User already exists!");
+      }
+      console.log("User does not exist!");
+
+      // Add User to DB
+      //   Creating a new user if it doesn't exist
+      console.log({ name, email, password, secret, otpAuthURL });
+      const user = await User.create({
+        name,
+        email,
+        password,
+        secret,
+        otpAuthURL,
+      });
+      console.log(user);
+      if (user) {
+        console.log("User Created!");
+        console.log(user);
+        generateToken(res, user._id);
+        res
+          .status(201)
+          .json({ _id: user._id, name: user.name, email: user.email });
+      } else {
+        res.status(401);
+        throw new Error("Invalid User Data!");
+      }
+    } else {
+      res.status(401);
+      throw new Error("Invalid OTP!");
+    }
+  } catch (error) {
     res.status(401);
-    throw new Error("Invalid user data!");
+    throw new Error("Invalid Token!");
   }
 });
 
